@@ -1,45 +1,64 @@
+# app.py
 from flask import Flask, jsonify
-from api.swagger import spec
-from api.controllers.todo_controller import bp as todo_bp
-from api.middleware import middleware
-from api.responses import success_response
-from infrastructure.databases import init_db
-from config import Config
 from flasgger import Swagger
-from config import SwaggerConfig
 from flask_swagger_ui import get_swaggerui_blueprint
+
+from api.swagger import spec
+from api.middleware import middleware
+from infrastructure.databases import init_db
+
+# ==== Import tất cả controllers (mỗi file phải có biến bp) ====
+from api.controllers.auth_controller import bp as auth_bp
+from api.controllers.bookings_controller import bp as bookings_bp
+from api.controllers.customer_controller import bp as customers_bp
+from api.controllers.locations_controller import bp as locations_bp
+from api.controllers.me_controller import bp as me_bp
+from api.controllers.pod_contronller import bp as pods_bp
+from api.controllers.service_packages_controller import bp as service_packages_bp
+from api.controllers.staffs_controller import bp as staff_bp
+from api.controllers.user_controller import bp as users_bp
 
 
 def create_app():
     app = Flask(__name__)
     Swagger(app)
-    # Đăng ký blueprint trước
-    app.register_blueprint(todo_bp)
 
-     # Thêm Swagger UI blueprint
-    SWAGGER_URL = '/docs'
-    API_URL = '/swagger.json'
+    # ==== Đăng ký tất cả Blueprints ====
+    app.register_blueprint(auth_bp)               # /auth ... (nếu có)
+    app.register_blueprint(me_bp)                 # /me ...
+    app.register_blueprint(bookings_bp)           # /bookings ...
+    app.register_blueprint(locations_bp)          # /locations ...
+    app.register_blueprint(pods_bp)               # /pods ...
+    app.register_blueprint(service_packages_bp)   # /service-packages ...
+    app.register_blueprint(staff_bp)              # /staffs ... (nếu có route)
+    app.register_blueprint(customers_bp)          # /customers ... (nếu có route)
+    app.register_blueprint(users_bp)              # /users ...
+
+    # ==== Swagger UI (/docs) ====
+    SWAGGER_URL = "/docs"
+    API_URL = "/swagger.json"
     swaggerui_blueprint = get_swaggerui_blueprint(
-        SWAGGER_URL,
-        API_URL,
-        config={'app_name': "Todo API"}
+        SWAGGER_URL, API_URL, config={"app_name": "Booking API"}
     )
     app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
+    # ==== DB + Middleware ====
     init_db(app)
-
-    # Register middleware
     middleware(app)
 
-    # Register routes
-    # Example: app.add_url_rule('/example', view_func=example_view)
-    # Tự động quét tất cả các route đã đăng ký
+    # ==== Tự động add MỌI route vào OpenAPI spec ====
     with app.test_request_context():
         for rule in app.url_map.iter_rules():
-            if rule.endpoint.startswith('todo.'):
-                view_func = app.view_functions[rule.endpoint]
-                print(f"Adding path: {rule.rule} -> {view_func}")
+            if rule.endpoint == "static":
+                continue
+            view_func = app.view_functions.get(rule.endpoint)
+            if not view_func:
+                continue
+            try:
                 spec.path(view=view_func)
+            except Exception:
+                # Route không có doc swagger block thì bỏ qua, không ảnh hưởng chạy
+                pass
 
     @app.route("/swagger.json")
     def swagger_json():
@@ -47,6 +66,7 @@ def create_app():
 
     return app
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app = create_app()
-    app.run(host='0.0.0.0', port=6868, debug=True)
+    app.run(host="0.0.0.0", port=6868, debug=True)

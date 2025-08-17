@@ -3,6 +3,8 @@ from sqlalchemy.orm import sessionmaker
 from config import Config
 from infrastructure.databases.base import Base
 
+
+
 # Database configuration
 DATABASE_URL = Config.DATABASE_URI
 print(DATABASE_URL)

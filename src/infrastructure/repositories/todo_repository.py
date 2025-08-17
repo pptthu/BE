@@ -9,12 +9,15 @@ from config import Config
 from sqlalchemy import Column, Integer, String, DateTime
 from infrastructure.databases import Base
 
+
+
 load_dotenv()
 
 class TodoRepository(ITodoRepository):
     def __init__(self):
         self._todos = []
         self._id_counter = 1
+  
 
     def add(self, todo: Todo) -> Todo:
         todo.id = self._id_counter
