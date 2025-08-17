@@ -32,3 +32,25 @@ class UserService:
     @staticmethod
     def list_all(session) -> List[UserModel]:
         return session.query(UserModel).order_by(UserModel.id.asc()).all()
+
+    @staticmethod
+    def assign_role(session, user_id: int, role_name: str) -> UserModel:
+        user = session.get(UserModel, user_id)
+        if not user:
+            raise LookupError("User not found")
+        role = session.query(RoleModel).filter_by(name=role_name).first()
+        if not role:
+            raise LookupError("Role not found")
+        user.role_id = role.id
+        session.commit()
+        session.refresh(user)
+        return user
+
+    @staticmethod
+    def delete_user(session, user_id: int):
+        user = session.get(UserModel, user_id)
+        if not user:
+            raise LookupError("User not found")
+        session.delete(user)
+        session.commit()
+
