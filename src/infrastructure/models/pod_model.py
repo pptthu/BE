@@ -1,20 +1,17 @@
-from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey, func
-from sqlalchemy.orm import relationship
-from src.infrastructure.databases.mssql import Base
+from src.infrastructure.databases.extensions import db
 
-class PODModel(Base):
+class POD(db.Model):
     __tablename__ = "PODs"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(50), nullable=False)
-    price = Column(Numeric(10, 2), nullable=False)
-    status = Column(String(20), nullable=False)
-    location_id = Column(Integer, ForeignKey("Locations.id"), nullable=False)
-    created_at = Column(DateTime, nullable=False, server_default=func.getdate())
-    updated_at = Column(DateTime, nullable=False, server_default=func.getdate())
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    price = db.Column(db.Numeric(10, 2), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="active")
+    location_id = db.Column(db.Integer, db.ForeignKey("Locations.id"), nullable=False)
 
-    # THUỘC TÍNH NÀY LÀ BẮT BUỘC để khớp với LocationModel.pods
-    location = relationship("LocationModel", back_populates="pods")
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime, nullable=False, server_default=db.func.now(), onupdate=db.func.now()
+    )
 
-    # cho quan hệ với BookingModel
-    bookings = relationship("BookingModel", back_populates="pod")
+    location = db.relationship("Location", backref="pods")

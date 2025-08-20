@@ -1,8 +1,14 @@
-from sqlalchemy import Column, Integer, String, Numeric
-from src.infrastructure.databases.mssql import Base
+from src.infrastructure.databases.extensions import db
 
-class ServiceModel(Base):
-    __tablename__ = "services"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(100), nullable=False)
-    price = Column(Numeric(10, 2), nullable=False)
+class Service(db.Model):
+    __tablename__ = "Services"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    price = db.Column(db.Numeric(10, 2), nullable=False)
+    is_active = db.Column(db.Boolean, nullable=False, server_default=db.true())
+
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime, nullable=False, server_default=db.func.now(), onupdate=db.func.now()
+    )

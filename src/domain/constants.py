@@ -1,10 +1,17 @@
-# Constants
+# Vai trò & trạng thái dùng chung trong hệ thống
+ROLES = {
+    "ADMIN": "admin",
+    "MANAGER": "manager",
+    "STAFF": "staff",
+    "CUSTOMER": "customer",
+}
 
-# Define any constants used throughout the application here. 
-# For example, you might define API version, error messages, or configuration keys.
+BOOKING_STATUS = (
+    "pending",
+    "confirmed",
+    "checked_in",
+    "checked_out",
+    "cancelled",
+)
 
-API_VERSION = "v1"
-DEFAULT_PAGE_SIZE = 20
-MAX_PAGE_SIZE = 100
-
-# Add more constants as needed for your application.
+PAYMENT_STATUS = ("unpaid", "paid")

@@ -1,9 +1,9 @@
 from flask import Flask
 from .controllers.auth_controller import bp as auth_bp
-from .controllers.user_controller import bp as user_bp
+from .controllers.users_controller import bp as user_bp
 from .controllers.locations_controller import bp as location_bp
 from .controllers.pods_controller import bp as pod_bp
-from .controllers.booking_controller import bp as booking_bp  # singular
+from .controllers.bookings_controller import bp as booking_bp  # singular
 from .controllers.staff_controller import bp as staff_bp
 from .controllers.manager_controller import bp as manager_bp
 from .controllers.admin_controller import bp as admin_bp

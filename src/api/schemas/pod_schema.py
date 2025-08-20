@@ -1,10 +1,10 @@
 from marshmallow import Schema, fields
+from src.api.schemas.location_schema import LocationSchema
 
 class PODSchema(Schema):
     id = fields.Int()
     name = fields.Str()
-    price = fields.Decimal(as_string=True)  # DECIMAL(10,2)
+    price = fields.Float()
     status = fields.Str()
     location_id = fields.Int()
-    created_at = fields.DateTime()
-    updated_at = fields.DateTime()
+    location = fields.Nested(LocationSchema)

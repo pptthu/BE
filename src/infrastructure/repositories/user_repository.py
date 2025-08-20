@@ -1,25 +1,11 @@
-from domain.models.itodo_repository import ITodoRepository
-from domain.models.todo import Todo
-from typing import List, Optional
-from dotenv import load_dotenv
-import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from config import Config
-from sqlalchemy import Column, Integer, String, DateTime,Boolean
-from src.infrastructure.databases import Base
-
-load_dotenv()
-
-class UserModel(Base):
-    __tablename__ = 'flask_user'
-    __table_args__ = {'extend_existing': True}  # Thêm dòng này
-
-    id = Column(Integer, primary_key=True)
-    user_name = Column(String(18), nullable=False)
-    password = Column(String(18), nullable=False)
-    description = Column(String(255), nullable=True)
-    status = Column(Boolean, nullable=False)
-    created_at = Column(DateTime)
-    updated_at = Column(DateTime) 
-    
+﻿from src.infrastructure.models.user_model import User
+from src.infrastructure.repositories.base import BaseRepository
+from src.infrastructure.databases.extensions import db
+from typing import Optional
+class UserRepository(BaseRepository[User]):
+    def __init__(self): super().__init__(User)
+    def by_email(self, email:str)->Optional[User]: return User.query.filter_by(email=email).first()
+    def soft_disable(self, _id:int)->bool:
+        u = self.get(_id)
+        if not u: return False
+        u.is_active = False; db.session.commit(); return True

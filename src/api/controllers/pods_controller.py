@@ -1,26 +1,41 @@
-from flask import Blueprint, request
-from src.infrastructure.databases import get_session
-from src.infrastructure.models.pod_model import PODModel
-from src.api.schemas.pod import PODSchema
-from src.api.responses import success_response
-from src.services.pod_service import PodService
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
+from datetime import datetime
+from src.infrastructure.models.pod_model import POD
+from src.infrastructure.models.booking_model import Booking
+from src.api.schemas.pod_schema import PODSchema
 
-bp = Blueprint("pods", __name__, url_prefix="/pods")
-schema = PODSchema()
+bp = Blueprint("pods", __name__)
 
-@bp.get("/")
+@bp.get("/pods")
+@jwt_required(optional=True)
 def list_pods():
-    session = get_session()()
     location_id = request.args.get("location_id", type=int)
-    q = session.query(PODModel)
-    if location_id:
-        q = q.filter(PODModel.location_id == location_id)
-    return success_response(schema.dump(q.all(), many=True))
+    start = request.args.get("from")
+    end = request.args.get("to")
 
-@bp.get("/<int:pod_id>")
-def get_pod(pod_id: int):
-    session = get_session()()
-    pod = session.get(PODModel, pod_id)
-    if not pod:
-        return success_response(None, "Not found", 404)
-    return success_response(schema.dump(pod))
+    q = POD.query
+    if location_id:
+        q = q.filter_by(location_id=location_id)
+    pods = q.all()
+
+    if not (start and end):
+        return jsonify(PODSchema(many=True).dump(pods))
+
+    start_dt = datetime.fromisoformat(start)
+    end_dt = datetime.fromisoformat(end)
+    result = []
+    for p in pods:
+        overlaps = (Booking.query.filter_by(pod_id=p.id)
+                    .filter(Booking.end_time > start_dt, Booking.start_time < end_dt)
+                    .all())
+        available = all(b.status not in ("pending", "confirmed", "checked_in") for b in overlaps)
+        data = PODSchema().dump(p)
+        data["available"] = available
+        result.append(data)
+    return jsonify(result)
+
+@bp.get("/pods/<int:pod_id>")
+@jwt_required(optional=True)
+def get_pod(pod_id):
+    return jsonify(PODSchema().dump(POD.query.get_or_404(pod_id)))

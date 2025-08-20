@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 from src.infrastructure.databases import get_session
 from src.infrastructure.models.location_model import LocationModel
-from src.api.schemas.location import LocationSchema
+from src.api.schemas.location_schema import LocationSchema
 from src.services.location_service import LocationService
 
 bp = Blueprint("locations", __name__, url_prefix="/locations")

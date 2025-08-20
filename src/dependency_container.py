@@ -1,14 +1,12 @@
-# Dependency Injection Container
+# Khởi tạo các repository (sẽ được cung cấp ở Phần 3)
+from src.infrastructure.repositories.user_repository import UserRepository
+from src.infrastructure.repositories.booking_repository import BookingRepository
+from src.infrastructure.repositories.pod_repository import PODRepository
+from src.infrastructure.repositories.location_repository import LocationRepository
+from src.infrastructure.repositories.service_repository import ServiceRepository
 
-from dependency_injector import containers, providers
-
-# Import your services and repositories here
-# from src.infrastructure.repositories import SomeRepository
-# from src.infrastructure.services import SomeService
-
-class Container(containers.DeclarativeContainer):
-    # Define your providers here
-    # some_repository = providers.Factory(SomeRepository)
-    # some_service = providers.Factory(SomeService, repository=some_repository)
-
-    pass  # This file is intentionally left blank for now.
+user_repo = UserRepository()
+booking_repo = BookingRepository()
+pod_repo = PODRepository()
+location_repo = LocationRepository()
+service_repo = ServiceRepository()

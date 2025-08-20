@@ -1,47 +1,39 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from urllib.parse import quote_plus
+# src/infrastructure/databases/mssql.py
 import os
+import urllib.parse
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
+from .base import Base
 
-Base = declarative_base()
+load_dotenv()
 
-def _truthy(x: str | None) -> bool:
-    return str(x).lower() in ("1", "true", "yes", "y")
+DB_USER = os.getenv("DB_USER", "sa")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "Aa@123456")
+DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
+DB_PORT = os.getenv("DB_PORT", "1433")
+DB_NAME = os.getenv("DB_NAME", "BookSysDB")
 
-def _build_uri() -> str:
-    driver = os.getenv("MSSQL_DRIVER", "ODBC Driver 18 for SQL Server")
-    host   = os.getenv("MSSQL_HOST", "127.0.0.1")
-    port   = os.getenv("MSSQL_PORT", "1433")
-    db     = os.getenv("MSSQL_DB", "BookSysDB")
+# Driver ODBC 18, bật TrustServerCertificate cho local dev
+params = urllib.parse.quote_plus(
+    f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+    f"SERVER={DB_HOST},{DB_PORT};"
+    f"DATABASE={DB_NAME};"
+    f"UID={DB_USER};PWD={DB_PASSWORD};"
+    "TrustServerCertificate=Yes;"
+)
 
-    dburi = os.getenv("DATABASE_URI")
-    if dburi:
-        return dburi
+DATABASE_URI = f"mssql+pyodbc:///?odbc_connect={params}"
 
-    # Windows Auth (Trusted_Connection)
-    if _truthy(os.getenv("MSSQL_TRUSTED")) or not os.getenv("MSSQL_USER"):
-        return (
-            f"mssql+pyodbc://@{host},{port}/{db}"
-            f"?driver={quote_plus(driver)}"
-            f"&Trusted_Connection=yes&TrustServerCertificate=yes"
-        )
-
-    # SQL Auth
-    user = os.getenv("MSSQL_USER", "")
-    pwd  = os.getenv("MSSQL_PASSWORD", "")
-    return (
-        f"mssql+pyodbc://{quote_plus(user)}:{quote_plus(pwd)}@{host},{port}/{db}"
-        f"?driver={quote_plus(driver)}&TrustServerCertificate=yes"
-    )
-
-DATABASE_URI = _build_uri()
 engine = create_engine(DATABASE_URI, pool_pre_ping=True, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
-def get_session():
-    return SessionLocal
-
 def init_db():
-    # Import models để đăng ký đầy đủ mapper/relationship
-    import src.infrastructure.models  # noqa: F401
+    # Import models để Base biết metadata
+    from src.models.user_model import User
+    from src.models.location_model import Location
+    from src.models.pod_model import Pod
+    from src.models.service_model import Service
+    from src.models.booking_model import Booking
+    from src.models.booking_service_model import BookingService
     Base.metadata.create_all(bind=engine)

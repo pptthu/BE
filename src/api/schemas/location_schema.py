@@ -4,5 +4,3 @@ class LocationSchema(Schema):
     id = fields.Int()
     name = fields.Str()
     address = fields.Str()
-    created_at = fields.DateTime()
-    updated_at = fields.DateTime()

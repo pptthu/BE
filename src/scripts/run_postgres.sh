@@ -1,20 +1,21 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -e
 
-# Function to check if PostgreSQL is running
-is_postgres_running() {
-    pg_isready -q
-    return $?
-}
+# Chạy Postgres local bằng Docker
+# DB: booksysdb | user: postgres | pass: postgres
+container_name="podbook-pg"
 
-# Start PostgreSQL if it's not already running
-if ! is_postgres_running; then
-    echo "PostgreSQL is not running. Starting it now..."
-    pg_ctl -D /usr/local/var/postgres -l /usr/local/var/postgres/server.log start
+if [ "$(docker ps -aq -f name=$container_name)" ]; then
+  echo "Container $container_name đã tồn tại. Khởi động lại..."
+  docker start $container_name || true
 else
-    echo "PostgreSQL is already running."
+  echo "Tạo container $container_name ..."
+  docker run --name $container_name \
+    -e POSTGRES_PASSWORD=postgres \
+    -e POSTGRES_DB=booksysdb \
+    -p 5432:5432 \
+    -d postgres:15
 fi
 
-# Create the database if it doesn't exist
-if ! psql -lqt | cut -d \| -f 1 | grep -qw dbname; then
-    createdb dbname
-fi
+echo "Postgres started at localhost:5432 (db=booksysdb, user=postgres, pass=postgres)"
+echo "Đặt DB_DIALECT=postgres trong .env để dùng Postgres."

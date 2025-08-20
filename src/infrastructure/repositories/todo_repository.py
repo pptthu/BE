@@ -1,4 +1,4 @@
-from .base_repository import BaseRepository
+from .base import BaseRepository
 from src.infrastructure.models.todo_model import TodoModel
 
 class TodoRepository(BaseRepository):

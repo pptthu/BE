@@ -1,40 +1,39 @@
 import os
+from urllib.parse import quote_plus
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "a_default_secret_key")
-    DEBUG = os.getenv("DEBUG", "False").lower() in ["true", "1", "yes"]
-    TESTING = os.getenv("TESTING", "False").lower() in ["true", "1", "yes"]
+    # Core
+    SECRET_KEY = os.environ.get("SECRET_KEY", "dev_secret_change_me")
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET", "dev_jwt_change_me")
+    DEBUG = os.environ.get("DEBUG", "1") in ["1", "true", "True"]
+    CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
 
-    # MSSQL (pyodbc + ODBC Driver 18)
-    DB_USER = os.getenv("DB_USER", "sa")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "Aa@123456")
-    DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
-    DB_PORT = int(os.getenv("DB_PORT", "1433"))
-    DB_NAME = os.getenv("DB_NAME", "BookSysDB")
-    SQLALCHEMY_DATABASE_URI = (
-        f"mssql+pyodbc://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        "?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=no"
-    )
+    # DB Dialect: postgres | mssql
+    DB_DIALECT = os.environ.get("DB_DIALECT", "postgres")
 
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-jwt")
+    # SQL Server
+    DB_USER = os.environ.get("DB_USER", "sa")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD", "Aa@123456")
+    DB_HOST = os.environ.get("DB_HOST", "127.0.0.1")
+    DB_PORT = int(os.environ.get("DB_PORT", "1433"))
+    DB_NAME = os.environ.get("DB_NAME", "BookSysDB")
 
-    # Flasgger
-    SWAGGER_CONFIG = {
-        "headers": [],
-        "specs": [
-            {
-                "endpoint": "apispec_1",
-                "route": "/apispec_1.json",
-                "rule_filter": lambda rule: True,
-                "model_filter": lambda tag: True,
-            }
-        ],
-        "static_url_path": "/flasgger_static",
-        "swagger_ui": True,
-        "specs_route": "/apidocs/",
-    }
-    SWAGGER_TEMPLATE = {
-        "swagger": "2.0",
-        "info": {"title": "POD Booking System API", "version": "1.0.0"},
-        "basePath": "/",
-    }
+    # Postgres
+    PG_USER = os.environ.get("PG_USER", "postgres")
+    PG_PASSWORD = os.environ.get("PG_PASSWORD", "postgres")
+    PG_HOST = os.environ.get("PG_HOST", "127.0.0.1")
+    PG_PORT = int(os.environ.get("PG_PORT", "5432"))
+    PG_DB = os.environ.get("PG_DB", "booksysdb")
+
+    @property
+    def SQLALCHEMY_DATABASE_URI(self):
+        if self.DB_DIALECT == "mssql":
+            return (
+                f"mssql+pymssql://{self.DB_USER}:{quote_plus(self.DB_PASSWORD)}"
+                f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+            )
+        # default: postgres
+        return (
+            f"postgresql+psycopg2://{self.PG_USER}:{quote_plus(self.PG_PASSWORD)}"
+            f"@{self.PG_HOST}:{self.PG_PORT}/{self.PG_DB}"
+        )

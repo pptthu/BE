@@ -1,7 +1,9 @@
 from flask import jsonify
 
-def success_response(data=None, message="OK", status=200):
-    return jsonify({"status": "success", "message": message, "data": data}), status
+def ok(data=None, **kwargs):
+    body = {"data": data}
+    body.update(kwargs)
+    return jsonify(body)
 
-def error_response(message="Error", status=400, errors=None):
-    return jsonify({"status": "error", "message": message, "errors": errors or []}), status
+def err(message: str, code: str = "error", status: int = 400):
+    return jsonify({"error": code, "message": message}), status

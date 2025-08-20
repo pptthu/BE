@@ -1,13 +1,12 @@
-from sqlalchemy import Column, Integer, String, DateTime, func
-from sqlalchemy.orm import relationship
-from src.infrastructure.databases.mssql import Base
+from src.infrastructure.databases.extensions import db
 
-class RoleModel(Base):
+class Role(db.Model):
     __tablename__ = "Roles"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(50), nullable=False, unique=True)
-    created_at = Column(DateTime, nullable=False, server_default=func.getdate())
-    updated_at = Column(DateTime, nullable=False, server_default=func.getdate())
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
 
-    users = relationship("UserModel", back_populates="role")
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime, nullable=False, server_default=db.func.now(), onupdate=db.func.now()
+    )

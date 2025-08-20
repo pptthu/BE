@@ -1,19 +1,24 @@
-from sqlalchemy import Column, Integer, DateTime, Numeric, String, ForeignKey, func
-from sqlalchemy.orm import relationship
-from src.infrastructure.databases.mssql import Base
+from src.infrastructure.databases.extensions import db
 
-class BookingModel(Base):
+class Booking(db.Model):
     __tablename__ = "Bookings"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("Users.id"), nullable=False)
-    pod_id = Column(Integer, ForeignKey("PODs.id"), nullable=False)
-    start_time = Column(DateTime, nullable=False)
-    end_time = Column(DateTime, nullable=False)
-    total_price = Column(Numeric(10, 2), nullable=False)
-    status = Column(String(20), nullable=False)
-    created_at = Column(DateTime, nullable=False, server_default=func.getdate())
-    updated_at = Column(DateTime, nullable=False, server_default=func.getdate())
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("Users.id"), nullable=False)
+    pod_id  = db.Column(db.Integer, db.ForeignKey("PODs.id"), nullable=False)
 
-    pod = relationship("PODModel", back_populates="bookings")
-    user = relationship("UserModel", back_populates="bookings")
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time   = db.Column(db.DateTime, nullable=False)
+    total_price = db.Column(db.Numeric(10, 2), nullable=False)
+
+    status = db.Column(db.String(20), nullable=False, default="pending")
+    payment_status = db.Column(db.String(20), nullable=False, default="unpaid")
+    payment_confirmed_at = db.Column(db.DateTime, nullable=True)
+
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime, nullable=False, server_default=db.func.now(), onupdate=db.func.now()
+    )
+
+    user = db.relationship("User", backref="bookings")
+    pod  = db.relationship("POD", backref="bookings")
