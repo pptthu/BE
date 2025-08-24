@@ -8,6 +8,7 @@ class MeResponseSchema(Schema):
     roles_id = fields.Int(required=True)
     created_at = fields.DateTime(required=True)
     updated_at = fields.DateTime(required=True)
+    preferred_location_id = fields.Int(allow_none=True)  
 
 class MeUpdateSchema(Schema):
     # PATCH /me → cập nhật profile cơ bản
@@ -18,3 +19,5 @@ class MeChangePasswordSchema(Schema):
     # POST /me/change-password
     old_password = fields.Str(required=True)
     new_password = fields.Str(required=True, validate=validate.Length(min=6, max=128))
+class MeSetLocationSchema(Schema): # chọn 1 location tại thời điểm
+    location_id = fields.Int(required=True)

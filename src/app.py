@@ -24,15 +24,15 @@ def create_app():
     Swagger(app)
 
     # ==== Đăng ký tất cả Blueprints ====
-    app.register_blueprint(auth_bp)               # /auth ... (nếu có)
-    app.register_blueprint(me_bp)                 # /me ...
-    app.register_blueprint(bookings_bp)           # /bookings ...
-    app.register_blueprint(locations_bp)          # /locations ...
-    app.register_blueprint(pods_bp)               # /pods ...
-    app.register_blueprint(service_packages_bp)   # /service-packages ...
-    app.register_blueprint(staff_bp)              # /staffs ... (nếu có route)
-    app.register_blueprint(customers_bp)          # /customers ... (nếu có route)
-    app.register_blueprint(users_bp)              # /users ...
+    app.register_blueprint(auth_bp)               
+    app.register_blueprint(me_bp)                
+    app.register_blueprint(bookings_bp)          
+    app.register_blueprint(locations_bp)      
+    app.register_blueprint(pods_bp)             
+    app.register_blueprint(service_packages_bp)  
+    app.register_blueprint(staff_bp)             
+    app.register_blueprint(customers_bp)        
+    app.register_blueprint(users_bp)             
 
     # ==== Swagger UI (/docs) ====
     SWAGGER_URL = "/docs"

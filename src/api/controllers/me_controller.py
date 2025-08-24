@@ -10,6 +10,7 @@ from api.schemas.me import (
     MeResponseSchema,
     MeUpdateSchema,
     MeChangePasswordSchema,
+    MeSetLocationSchema,
 )
 
 bp = Blueprint("me", __name__, url_prefix="/me")
@@ -22,6 +23,7 @@ auth_service = AuthService(_user_repo)
 resp_schema = MeResponseSchema()
 update_schema = MeUpdateSchema()
 change_pw_schema = MeChangePasswordSchema()
+set_location_schema = MeSetLocationSchema()
 
 
 # Helper: lấy current user_id (demo: từ header hoặc query)
