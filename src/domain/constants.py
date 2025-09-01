@@ -1,17 +1,22 @@
-# Vai trò & trạng thái dùng chung trong hệ thống
 ROLES = {
-    "ADMIN": "admin",
-    "MANAGER": "manager",
-    "STAFF": "staff",
-    "CUSTOMER": "customer",
+"ADMIN": "ADMIN",
+"MANAGER": "MANAGER",
+"STAFF": "STAFF",
+"CUSTOMER": "CUSTOMER",
 }
 
-BOOKING_STATUS = (
-    "pending",
-    "confirmed",
-    "checked_in",
-    "checked_out",
-    "cancelled",
-)
 
-PAYMENT_STATUS = ("unpaid", "paid")
+POD_STATUS = {
+"AVAILABLE": "AVAILABLE",
+"BUSY": "BUSY",
+"MAINTAIN": "MAINTAIN",
+}
+
+
+BOOKING_STATUS = {
+"PENDING": "PENDING",
+"CONFIRMED": "CONFIRMED",
+"CHECKED_IN": "CHECKED_IN",
+"CHECKED_OUT": "CHECKED_OUT",
+"CANCELLED": "CANCELLED",
+}
