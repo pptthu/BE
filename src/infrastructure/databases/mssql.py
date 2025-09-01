@@ -60,3 +60,13 @@ SessionLocal = scoped_session(sessionmaker(bind=engine, autoflush=False, autocom
 from sqlalchemy.orm import DeclarativeBase
 class Base(DeclarativeBase):
     pass
+
+
+# Import models trước khi create_all để đăng ký metadata
+def init_db():
+    import src.infrastructure.models.role_model  # noqa: F401
+    import src.infrastructure.models.user_model  # noqa: F401
+    import src.infrastructure.models.location_model  # noqa: F401
+    import src.infrastructure.models.pod_model  # noqa: F401
+    import src.infrastructure.models.booking_model  # noqa: F401
+    Base.metadata.create_all(bind=engine)
