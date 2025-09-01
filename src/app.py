@@ -1,46 +1,56 @@
-import os
-from flask import Flask, jsonify
-from dotenv import load_dotenv
-from config import Config
-from extensions import db, jwt
+from flask import Flask
+from src.api.routes import api
+from src.common.error_handler import register_error_handlers
+from src.infrastructure.databases.mssql import init_db, SessionLocal
+from src.infrastructure.models.role_model import Role
+from src.infrastructure.models.user_model import User
+from src.common.security import hash_password
+from src.common.constants import ROLES
 
-# Blueprints
-from routes.auth import bp as auth_bp
-from routes.users import bp as users_bp
-from routes.pods import bp as pods_bp
-from routes.bookings import bp as bookings_bp
-from routes.staff import bp as staff_bp
-from routes.manager import bp as manager_bp
-from routes.admin import bp as admin_bp
 
-def create_app():
-    load_dotenv()
-    app = Flask(__name__)
-    app.config.from_object(Config)
 
-    db.init_app(app)
-    jwt.init_app(app)
 
-    # Đăng ký route
-    app.register_blueprint(auth_bp, url_prefix="/")
-    app.register_blueprint(users_bp, url_prefix="/")
-    app.register_blueprint(pods_bp, url_prefix="/")
-    app.register_blueprint(bookings_bp, url_prefix="/")
-    app.register_blueprint(staff_bp, url_prefix="/")
-    app.register_blueprint(manager_bp, url_prefix="/")
-    app.register_blueprint(admin_bp, url_prefix="/")
+def seed_data():
+db = SessionLocal()
+try:
+# seed roles
+role_names = [ROLES["ADMIN"], ROLES["MANAGER"], ROLES["STAFF"], ROLES["CUSTOMER"]]
+roles = {}
+for name in role_names:
+r = db.query(Role).filter(Role.name == name).first()
+if not r:
+r = Role(name=name)
+db.add(r); db.flush()
+roles[name] = r
+# seed users (idempotent by email)
+def ensure(email, fullname, role_name):
+u = db.query(User).filter(User.email == email).first()
+if not u:
+u = User(full_name=fullname, email=email,
+password=hash_password("123456"), role_id=roles[role_name].id)
+db.add(u)
+ensure("admin@pod.local", "Admin", ROLES["ADMIN"])
+ensure("manager@pod.local", "Manager", ROLES["MANAGER"])
+ensure("staff@pod.local", "Staff", ROLES["STAFF"])
+ensure("user@pod.local", "User", ROLES["CUSTOMER"])
+db.commit()
+finally:
+SessionLocal.remove()
 
-    @app.get("/health")
-    def health():
-        return jsonify(ok=True)
 
-    # Khởi tạo bảng (MVP)
-    with app.app_context():
-        from models import role, user, location, pod, booking  # noqa: F401
-        db.create_all()
+app = Flask(__name__)
+init_db()
+seed_data()
 
-    return app
+
+app.register_blueprint(api, url_prefix="/")
+register_error_handlers(app)
+
+
+@app.get("/")
+def root():
+return {"service": "POD Booking API", "status": "ok"}
+
 
 if __name__ == "__main__":
-    app = create_app()
-    app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+app.run(host="0.0.0.0", port=6868, debug=True)
