@@ -1,23 +1,54 @@
-import os
-from dotenv import load_dotenv
-load_dotenv()
+from flask import Flask, jsonify
+from api.swagger import spec
+from api.controllers.todo_controller import bp as todo_bp
+from api.middleware import middleware
+from api.responses import success_response
+from infrastructure.databases import init_db
+from config import Config
+from flasgger import Swagger
+from config import SwaggerConfig
+from flask_swagger_ui import get_swaggerui_blueprint
 
-class Settings:
-    DB_USER = os.getenv("DB_USER", "sa")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "Aa@123456")
-    DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
-    DB_PORT = int(os.getenv("DB_PORT", "14333"))
-    DB_NAME = os.getenv("DB_NAME", "BookSysDB")
 
-    JWT_SECRET = os.getenv("JWT_SECRET", "change_me")
-    JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "120"))
-    PAYMENT_QR_PATH = os.getenv("PAYMENT_QR_PATH", "./static/qr/qr.png")
-    API_PORT = int(os.getenv("API_PORT", "8000"))
+def create_app():
+    app = Flask(__name__)
+    Swagger(app)
+    # Đăng ký blueprint trước
+    app.register_blueprint(todo_bp)
 
-    @property
-    def SQLALCHEMY_URL(self):
-        return (f"mssql+pyodbc://{self.DB_USER}:{self.DB_PASSWORD}"
-                f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-                f"?driver=ODBC+Driver+17+for+SQL+Server&TrustServerCertificate=yes")
+     # Thêm Swagger UI blueprint
+    SWAGGER_URL = '/docs'
+    API_URL = '/swagger.json'
+    swaggerui_blueprint = get_swaggerui_blueprint(
+        SWAGGER_URL,
+        API_URL,
+        config={'app_name': "Todo API"}
+    )
+    app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
-settings = Settings()
+    try:
+        init_db(app)
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+
+    # Register middleware
+    middleware(app)
+
+    # Register routes
+    with app.test_request_context():
+        for rule in app.url_map.iter_rules():
+            # Thêm các endpoint khác nếu cần
+            if rule.endpoint.startswith(('todo.', 'course.', 'user.')):
+                view_func = app.view_functions[rule.endpoint]
+                print(f"Adding path: {rule.rule} -> {view_func}")
+                spec.path(view=view_func)
+
+    @app.route("/swagger.json")
+    def swagger_json():
+        return jsonify(spec.to_dict())
+
+    return app
+
+if __name__ == '__main__':
+    app = create_app()
+    app.run(host='0.0.0.0', port=6868, debug=True)

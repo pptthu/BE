@@ -1,23 +1,84 @@
+# Configuration settings for the Flask application
+
 import os
-from dotenv import load_dotenv
-load_dotenv()
 
-class Settings:
-    DB_USER = os.getenv("DB_USER", "sa")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "Aa@123456")
-    DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
-    DB_PORT = int(os.getenv("DB_PORT", "14333"))
-    DB_NAME = os.getenv("DB_NAME", "BookSysDB")
+class Config:
+    """Base configuration."""
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'a_default_secret_key'
+    DEBUG = os.environ.get('DEBUG', 'False').lower() in ['true', '1']
+    TESTING = os.environ.get('TESTING', 'False').lower() in ['true', '1']
+    DATABASE_URI = os.environ.get('DATABASE_URI') or 'mssql+pymssql://sa:Aa%40123456@127.0.0.1:1433/FlaskApiDB'
+    CORS_HEADERS = 'Content-Type'
 
-    JWT_SECRET = os.getenv("JWT_SECRET", "change_me")
-    JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "120"))
-    PAYMENT_QR_PATH = os.getenv("PAYMENT_QR_PATH", "./static/qr/qr.png")
-    API_PORT = int(os.getenv("API_PORT", "8000"))
+class DevelopmentConfig(Config):
+    """Development configuration."""
+    DEBUG = True
+    DATABASE_URI = os.environ.get('DATABASE_URI') or 'mssql+pymssql://sa:Aa%40123456@127.0.0.1:1433/FlaskApiDB'
 
-    @property
-    def SQLALCHEMY_URL(self):
-        return (f"mssql+pyodbc://{self.DB_USER}:{self.DB_PASSWORD}"
-                f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-                f"?driver=ODBC+Driver+17+for+SQL+Server&TrustServerCertificate=yes")
 
-settings = Settings()
+class TestingConfig(Config):
+    """Testing configuration."""
+    TESTING = True
+    DATABASE_URI = os.environ.get('DATABASE_URI') or 'mssql+pymssql://sa:Aa%40123456@127.0.0.1:1433/FlaskApiDB'
+
+
+class ProductionConfig(Config):
+    """Production configuration."""
+    DATABASE_URI = os.environ.get('DATABASE_URI') or 'mssql+pymssql://sa:Aa%40123456@127.0.0.1:1433/FlaskApiDB'
+
+    
+template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "Todo API",
+        "description": "API for managing todos",
+        "version": "1.0.0"
+    },
+    "basePath": "/",
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ]
+}
+class SwaggerConfig:
+    """Swagger configuration."""
+    template = {
+        "swagger": "2.0",
+        "info": {
+            "title": "Todo API",
+            "description": "API for managing todos",
+            "version": "1.0.0"
+        },
+        "basePath": "/",
+        "schemes": [
+            "http",
+            "https"
+        ],
+        "consumes": [
+            "application/json"
+        ],
+        "produces": [
+            "application/json"
+        ]
+    }
+
+    swagger_config = {
+        "headers": [],
+        "specs": [
+            {
+                "endpoint": 'apispec',
+                "route": '/apispec.json',
+                "rule_filter": lambda rule: True,
+                "model_filter": lambda tag: True,
+            }
+        ],
+        "static_url_path": "/flasgger_static",
+        "swagger_ui": True,
+        "specs_route": "/docs"
+    }
