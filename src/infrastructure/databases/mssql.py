@@ -1,39 +1,74 @@
-# src/infrastructure/databases/mssql.py
-import os
-import urllib.parse
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
-from .base import Base
+import logging
+# - DB_DRIVER="ODBC Driver 18 for SQL Server"
 
-load_dotenv()
 
-DB_USER = os.getenv("DB_USER", "sa")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "Aa@123456")
-DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
-DB_PORT = os.getenv("DB_PORT", "1433")
-DB_NAME = os.getenv("DB_NAME", "BookSysDB")
+def _as_bool(v, default=False):
+if v is None:
+return default
+return str(v).strip().lower() in ("1", "true", "yes", "y", "on")
 
-# Driver ODBC 18, bật TrustServerCertificate cho local dev
-params = urllib.parse.quote_plus(
-    f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-    f"SERVER={DB_HOST},{DB_PORT};"
-    f"DATABASE={DB_NAME};"
-    f"UID={DB_USER};PWD={DB_PASSWORD};"
-    "TrustServerCertificate=Yes;"
+
+DRIVER = getenv("DB_DRIVER", "ODBC Driver 18 for SQL Server")
+HOST = getenv("DB_HOST")
+PORT = getenv("DB_PORT")
+NAME = getenv("DB_NAME")
+USER = getenv("DB_USER")
+PWD = getenv("DB_PASSWORD")
+ENCRYPT = _as_bool(getenv("DB_ENCRYPT"), True)
+TRUST_CERT = _as_bool(getenv("DB_TRUST_SERVER_CERT"), True) # DEV default True
+TIMEOUT = int(getenv("DB_CONNECT_TIMEOUT", "5"))
+
+
+
+
+def _odbc_connect():
+conn = (
+f"DRIVER={DRIVER};"
+f"SERVER={HOST},{PORT};"
+f"DATABASE={NAME};"
+f"UID={USER};PWD={PWD};"
+f"Encrypt={'yes' if ENCRYPT else 'no'};"
+f"TrustServerCertificate={'yes' if TRUST_CERT else 'no'};"
+f"Connection Timeout={TIMEOUT};"
+)
+return quote_plus(conn)
+
+
+DB_URL = f"mssql+pyodbc:///?odbc_connect={_odbc_connect()}"
+engine = create_engine(
+DB_URL,
+echo=False,
+future=True,
+pool_pre_ping=True, # tự phục hồi kết nối chết
 )
 
-DATABASE_URI = f"mssql+pyodbc:///?odbc_connect={params}"
 
-engine = create_engine(DATABASE_URI, pool_pre_ping=True, future=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+logger = logging.getLogger("mssql")
+try:
+with engine.connect() as conn:
+conn.execute(text("SELECT 1"))
+logger.info("MSSQL connected")
+except Exception as exc:
+logger.exception("MSSQL connection failed: %s", exc)
+raise
+
+
+SessionLocal = scoped_session(sessionmaker(bind=engine, autoflush=False, autocommit=False))
+
+
+# Base cho ORM
+from sqlalchemy.orm import DeclarativeBase
+class Base(DeclarativeBase):
+pass
+
+
+# Import models trước khi create_all để đăng ký metadata
+
 
 def init_db():
-    # Import models để Base biết metadata
-    from src.models.user_model import User
-    from src.models.location_model import Location
-    from src.models.pod_model import Pod
-    from src.models.service_model import Service
-    from src.models.booking_model import Booking
-    from src.models.booking_service_model import BookingService
-    Base.metadata.create_all(bind=engine)
+import src.infrastructure.models.role_model # noqa: F401
+import src.infrastructure.models.user_model # noqa: F401
+import src.infrastructure.models.location_model # noqa: F401
+import src.infrastructure.models.pod_model # noqa: F401
+import src.infrastructure.models.booking_model # noqa: F401
+Base.metadata.create_all(bind=engine)   
