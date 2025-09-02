@@ -1,17 +1,41 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
-from infrastructure.databases.base import Base
+from infrastructure.models.pod_model import PodModel
+from infrastructure.databases.mssql import session
+from datetime import datetime
 
-class PodModel(Base):
-    __tablename__ = 'pods'
+class PodService:
+    def list_pods(self):
+        return session.query(PodModel).all()
 
-    id = Column(Integer, primary_key=True)
-    code = Column(String(50), nullable=False, unique=True)
-    name = Column(String(100), nullable=False)
-    status = Column(String(50), nullable=False, default="active")
+    def get_pod(self, pod_id):
+        return session.query(PodModel).get(pod_id)
 
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
-    location = relationship("LocationModel", backref="pods")
+    def create_pod(self, data):
+        pod = PodModel(
+            code=data["code"],
+            name=data["name"],
+            status=data.get("status", "active"),
+            location_id=data["location_id"],
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        session.add(pod)
+        session.commit()
+        return pod
 
-    created_at = Column(DateTime)
-    updated_at = Column(DateTime)
+    def update_pod(self, pod_id, data):
+        pod = session.query(PodModel).get(pod_id)
+        if not pod:
+            return None
+        pod.code = data.get("code", pod.code)
+        pod.name = data.get("name", pod.name)
+        pod.status = data.get("status", pod.status)
+        pod.location_id = data.get("location_id", pod.location_id)
+        pod.updated_at = datetime.utcnow()
+        session.commit()
+        return pod
+
+    def delete_pod(self, pod_id):
+        pod = session.query(PodModel).get(pod_id)
+        if pod:
+            session.delete(pod)
+            session.commit()
