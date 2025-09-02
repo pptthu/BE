@@ -1,10 +1,16 @@
 from marshmallow import Schema, fields
-from src.api.schemas.location_schema import LocationSchema
 
-class PODSchema(Schema):
-    id = fields.Int()
-    name = fields.Str()
-    price = fields.Float()
-    status = fields.Str()
-    location_id = fields.Int()
-    location = fields.Nested(LocationSchema)
+class PodRequestSchema(Schema):
+    code = fields.Str(required=True)
+    name = fields.Str(required=True)
+    status = fields.Str(required=False)
+    location_id = fields.Int(required=True)
+
+class PodResponseSchema(Schema):
+    id = fields.Int(required=True)
+    code = fields.Str(required=True)
+    name = fields.Str(required=True)
+    status = fields.Str(required=True)
+    location_id = fields.Int(required=True)
+    created_at = fields.Raw()
+    updated_at = fields.Raw()
