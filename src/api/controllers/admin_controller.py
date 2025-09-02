@@ -1,74 +1,120 @@
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
-from src.infrastructure.databases.extensions import db
-from src.api.middleware import roles_required
-from src.infrastructure.models.user_model import User
-from src.infrastructure.models.role_model import Role
+from flask import Blueprint, request, jsonify, session
+from app import db
+from infrastructure.models.user_model import User
+from schemas.user import LoginSchema
+from services.admin_service import AdminService
 
 bp = Blueprint("admin", __name__)
 
+@bp.post("/admin/login")
+def login():
+    data = request.get_json() or {}
+    schema = LoginSchema()
+    errors = schema.validate(data)
+    if errors:
+        return jsonify({"errors": errors}), 400
+
+    email, password = data["email"], data["password"]
+    user = AdminService.login(email, password)
+
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    session["user_id"] = user.id
+    session["role"] = user.role
+
+    return jsonify({
+        "msg": "Login successful",
+        "user": {"id": user.id, "email": user.email, "role": user.role}
+    })
+
+
+@bp.post("/admin/logout")
+def logout():
+    session.clear()
+    return jsonify({"msg": "Logged out successfully"})
+
+
 @bp.get("/admin/users")
-@jwt_required()
-@roles_required("admin")
-def list_users():
+def get_users():
+    if session.get("role") != "Admin":
+        return jsonify({"error": "Forbidden"}), 403
+
     users = User.query.all()
-    return jsonify([{
-        "id": u.id,
-        "full_name": u.full_name,
-        "email": u.email,
-        "role_id": u.role_id,
-        "role_name": u.role.name if u.role else None,
-        "is_active": u.is_active,
-        "location_id": u.location_id
-    } for u in users])
+    return jsonify([
+        {"id": u.id, "email": u.email, "role": u.role}
+        for u in users
+    ])
+
 
 @bp.post("/admin/users")
-@jwt_required()
-@roles_required("admin")
 def create_user():
+    if session.get("role") != "Admin":
+        return jsonify({"error": "Forbidden"}), 403
+
     data = request.get_json() or {}
-    email = data.get("email")
-    password = data.get("password") or "Aa@123456"
-    full_name = data.get("full_name", "User")
-    role_name = data.get("role", "customer")
+    try:
+        user = User(
+            email=data["email"],
+            role=data.get("role", "Customer")
+        )
+        user.set_password(data["password"])
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({"msg": "User created", "id": user.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
 
-    role = Role.query.filter_by(name=role_name).first()
-    if not role:
-        role = Role(name=role_name)
-        db.session.add(role); db.session.commit()
-
-    u = User(email=email, full_name=full_name, role_id=role.id, location_id=data.get("location_id"))
-    u.set_password(password)
-    db.session.add(u); db.session.commit()
-    return jsonify({"id": u.id}), 201
 
 @bp.put("/admin/users/<int:user_id>")
-@jwt_required()
-@roles_required("admin")
 def update_user(user_id):
-    u = User.query.get_or_404(user_id)
+    if session.get("role") != "Admin":
+        return jsonify({"error": "Forbidden"}), 403
+
     data = request.get_json() or {}
-    if "full_name" in data: u.full_name = data["full_name"]
-    if "email" in data: u.email = data["email"]
-    if "password" in data and data["password"]: u.set_password(data["password"])
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user.email = data.get("email", user.email)
+    if "password" in data:
+        user.set_password(data["password"])
     if "role" in data:
-        role = Role.query.filter_by(name=data["role"]).first()
-        if not role:
-            role = Role(name=data["role"]); db.session.add(role); db.session.commit()
-        u.role_id = role.id
-    if "is_active" in data: u.is_active = bool(data["is_active"])
-    if "location_id" in data: u.location_id = data["location_id"]
+        user.role = data["role"]
+
     db.session.commit()
-    return jsonify({"id": u.id})
+    return jsonify({"msg": "User updated"})
+
 
 @bp.delete("/admin/users/<int:user_id>")
-@jwt_required()
-@roles_required("admin")
 def delete_user(user_id):
-    u = User.query.get_or_404(user_id)
-    from src.infrastructure.models.booking_model import Booking
-    if Booking.query.filter_by(user_id=u.id).first():
-        return jsonify({"error": "conflict", "message": "User has bookings; disable instead"}), 409
-    u.is_active = False
+    if session.get("role") != "Admin":
+        return jsonify({"error": "Forbidden"}), 403
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    db.session.delete(user)
     db.session.commit()
-    return jsonify({"disabled": True})
+    return jsonify({"msg": "User deleted"})
+
+
+@bp.put("/admin/users/<int:user_id>/role")
+def assign_role(user_id):
+    if session.get("role") != "Admin":
+        return jsonify({"error": "Forbidden"}), 403
+
+    data = request.get_json() or {}
+    new_role = data.get("role")
+    if not new_role:
+        return jsonify({"error": "Role is required"}), 400
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user.role = new_role
+    db.session.commit()
+    return jsonify({"msg": f"User role updated to {new_role}"})
