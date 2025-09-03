@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 from services.booking_service import BookingService
-from infrastructure.repositories.booking_repository import BookingRepository
+from infrastructure.repositories.booking_staff_repository import BookingRepository
 from api.schemas.booking_staff_schema import BookingResponseSchema
 
 bp = Blueprint("staffs", __name__, url_prefix="/api/staff")
