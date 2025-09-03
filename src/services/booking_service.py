@@ -5,6 +5,9 @@ from src.infrastructure.models.booking_service_model import BookingService
 from src.infrastructure.databases.extensions import db
 from src.dependency_container import booking_repo
 
+from infrastructure.repositories.booking_repository import BookingRepository
+from infrastructure.models.booking_model import BookingModel
+
 def calc_price(pod: POD, start: datetime, end: datetime, services: list) -> float:
     """
     Tính tổng tiền = (giờ thuê * giá POD/giờ) + (cộng các dịch vụ)
@@ -44,3 +47,49 @@ def attach_services(booking_id: int, services: list):
         db.session.add(
             BookingService(booking_id=booking_id, service_id=svc.id, quantity=qty)
         )
+
+class BookingService:
+    def __init__(self, repo: BookingRepository):
+        self.repo = repo
+
+    def list_bookings(self, date: str = None):
+        """
+        Lấy danh sách booking cho nhân viên trong ngày.
+        """
+        return self.repo.list_for_staff(date)
+
+    def check_in(self, booking_id: int, at_time: datetime = None):
+        """
+        Xác nhận check-in: chỉ hợp lệ khi trạng thái là PENDING hoặc CONFIRMED.
+        """
+        booking = self.repo.get_by_id(booking_id)
+        if not booking:
+            raise ValueError("Booking not found")
+
+        if booking.status not in ["PENDING", "CONFIRMED"]:
+            raise ValueError("Booking not in valid state for check-in")
+
+        booking.status = "CHECKED_IN"
+        booking.updated_at = at_time or datetime.utcnow()
+        return self.repo.update(booking)
+
+    def check_out(self, booking_id: int, at_time: datetime = None):
+        """
+        Xác nhận check-out: chỉ hợp lệ khi trạng thái là CHECKED_IN.
+        """
+        booking = self.repo.get_by_id(booking_id)
+        if not booking:
+            raise ValueError("Booking not found")
+
+        if booking.status != "CHECKED_IN":
+            raise ValueError("Booking not in valid state for check-out")
+
+        booking.status = "CHECKED_OUT"
+        booking.updated_at = at_time or datetime.utcnow()
+
+        # (Tùy chọn) tính tiền
+        if booking.start_time and booking.end_time and booking.pod:
+            duration = (booking.end_time - booking.start_time).seconds / 3600
+            booking.total_price = float(duration) * float(booking.pod.price)
+
+        return self.repo.update(booking)
