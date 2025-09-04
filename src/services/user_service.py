@@ -1,56 +1,35 @@
-from typing import Optional, List
-from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import func
-from src.infrastructure.models.user_model import UserModel
-from src.infrastructure.models.role_model import RoleModel
+from sqlalchemy.orm import Session
+from ..infrastructure.repositories.user_repository import UserRepository
+from ..api.requests import verify_password, hash_password
+from ..domain.exceptions import AppError
 
 class UserService:
-    @staticmethod
-    def get_by_email(session, email: str) -> Optional[UserModel]:
-        return (
-            session.query(UserModel)
-            .filter(func.lower(UserModel.email) == email.lower())
-            .first()
-        )
+    def __init__(self, session: Session):
+        self.users = UserRepository(session)
+        self.db = session
 
-    @staticmethod
-    def verify_password(user: UserModel, plaintext: str) -> bool:
-        return check_password_hash(user.password, plaintext)
+    def get_me(self, user_id: int):
+        u = self.users.get_by_id(user_id)
+        return {"id": u.id, "email": u.email, "full_name": u.full_name, "role": u.role.name}
 
-    @staticmethod
-    def create_user(session, full_name: str, email: str, password: str, role_name: str = "customer") -> UserModel:
-        if UserService.get_by_email(session, email):
-            raise ValueError("Email already in use.")
-        role = session.query(RoleModel).filter(RoleModel.name == role_name).first()
-        if not role:
-            raise LookupError("Role not found.")
-        hashed = generate_password_hash(password)
-        user = UserModel(full_name=full_name, email=email, password=hashed, role_id=role.id)
-        session.add(user); session.commit(); session.refresh(user)
-        return user
+    def update_me(self, user_id: int, full_name: str | None = None):
+        u = self.users.get_by_id(user_id)
+        if full_name:
+            u.full_name = full_name
+        self.db.commit()
+        return {"id": u.id, "email": u.email, "full_name": u.full_name, "role": u.role.name}
 
-    @staticmethod
-    def list_all(session) -> List[UserModel]:
-        return session.query(UserModel).order_by(UserModel.id.asc()).all()
+    def change_email(self, user_id: int, new_email: str):
+        if self.users.get_by_email(new_email):
+            raise AppError("Email already in use", 400)
+        u = self.users.get_by_id(user_id)
+        u.email = new_email
+        self.db.commit()
+        return {"id": u.id, "email": u.email, "full_name": u.full_name, "role": u.role.name}
 
-    @staticmethod
-    def assign_role(session, user_id: int, role_name: str) -> UserModel:
-        user = session.get(UserModel, user_id)
-        if not user:
-            raise LookupError("User not found")
-        role = session.query(RoleModel).filter_by(name=role_name).first()
-        if not role:
-            raise LookupError("Role not found")
-        user.role_id = role.id
-        session.commit()
-        session.refresh(user)
-        return user
-
-    @staticmethod
-    def delete_user(session, user_id: int):
-        user = session.get(UserModel, user_id)
-        if not user:
-            raise LookupError("User not found")
-        session.delete(user)
-        session.commit()
-
+    def change_password(self, user_id: int, old_pw: str, new_pw: str):
+        u = self.users.get_by_id(user_id)
+        if not verify_password(old_pw, u.password):
+            raise AppError("Wrong password", 400)
+        u.password = hash_password(new_pw)
+        self.db.commit()

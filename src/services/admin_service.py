@@ -1,4 +1,4 @@
-from src.infrastructure.models.user_model import UserModel
+from src.infrastructure.models.user import UserModel
 from src.infrastructure.databases.mssql import session
 
 class AdminService:

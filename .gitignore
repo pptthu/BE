@@ -1,11 +1,15 @@
-﻿.env
-src/.env
-.venv/
-venv/
-**/__pycache__/
+﻿# Python
+__pycache__/
 *.pyc
-*.log
+*.pyo
+*.pyd
+.venv/
+.env
+
+# IDE
 .vscode/
 .idea/
+
+# OS
 .DS_Store
 Thumbs.db

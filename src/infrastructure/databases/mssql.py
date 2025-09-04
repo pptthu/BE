@@ -1,72 +1,48 @@
-mport logging
-from urllib.parse import quote_plus
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, scoped_session
-from os import getenv
-from dotenv import load_dotenv
 
-# Load .env file
-load_dotenv(dotenv_path="src/.env")
-
-
-def _as_bool(v, default=False):
-    if v is None:
-        return default
-    return str(v).strip().lower() in ("1", "true", "yes", "y", "on")
-
-DRIVER = getenv("DB_DRIVER", "ODBC Driver 18 for SQL Server")
-HOST = getenv("DB_HOST")
-PORT = getenv("DB_PORT")
-NAME = getenv("DB_NAME")
-USER = getenv("DB_USER")
-PWD = getenv("DB_PASSWORD")
-ENCRYPT = _as_bool(getenv("DB_ENCRYPT"), True)
-TRUST_CERT = _as_bool(getenv("DB_TRUST_SERVER_CERT"), True)  # DEV default True
-TIMEOUT = int(getenv("DB_CONNECT_TIMEOUT", "5"))
-
-def _odbc_connect():
-    conn = (
-        f"DRIVER={DRIVER};"
-        f"SERVER={HOST},{PORT};"
-        f"DATABASE={NAME};"
-        f"UID={USER};PWD={PWD};"
-        f"Encrypt={'yes' if ENCRYPT else 'no'};"
-        f"TrustServerCertificate={'yes' if TRUST_CERT else 'no'};"
-        f"Connection Timeout={TIMEOUT};"
-    )
-    return quote_plus(conn)
-
-DB_URL = f"mssql+pyodbc:///?odbc_connect={_odbc_connect()}"
-engine = create_engine(
-    DB_URL,
-    echo=False,
-    future=True,
-    pool_pre_ping=True,  # tự phục hồi kết nối chết
-)
-
-# Kiểm tra kết nối ban đầu + log ngắn gọn
-logger = logging.getLogger("mssql")
 try:
-    with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))
-        logger.info("MSSQL connected")
-except Exception as exc:
-    logger.exception("MSSQL connection failed: %s", exc)
-    raise
+    from ...config import Config
+except Exception:
+    Config = None
 
-SessionLocal = scoped_session(sessionmaker(bind=engine, autoflush=False, autocommit=False))
+try:
+    from .base import Base
+except Exception:
+    from ..models.base import Base
 
-# Base cho ORM
-from sqlalchemy.orm import DeclarativeBase
-class Base(DeclarativeBase):
-    pass
+if Config and getattr(Config, "DATABASE_URI", None):
+    DATABASE_URI = Config.DATABASE_URI
+else:
+    from ...config import load_config
+    import urllib.parse
+    _cfg = load_config()
+    server = f"{_cfg['DB_HOST']},{_cfg['DB_PORT']}"
+    odbc = (
+        "DRIVER=ODBC Driver 18 for SQL Server;"
+        f"SERVER={server};"
+        f"DATABASE={_cfg['DB_NAME']};"
+        f"UID={_cfg['DB_USER']};PWD={_cfg['DB_PASSWORD']};"
+        "Encrypt=yes;TrustServerCertificate=yes;"
+    )
+    params = urllib.parse.quote_plus(odbc)
+    DATABASE_URI = f"mssql+pyodbc:///?odbc_connect={params}"
 
+engine = create_engine(DATABASE_URI, pool_pre_ping=True, fast_executemany=True)
+SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
-# Import models trước khi create_all để đăng ký metadata
-def init_db():
-    import src.infrastructure.models.role_model  # noqa: F401
-    import src.infrastructure.models.user_model  # noqa: F401
-    import src.infrastructure.models.location_model  # noqa: F401
-    import src.infrastructure.models.pod_model  # noqa: F401
-    import src.infrastructure.models.booking_model  # noqa: F401
+def get_session():
+    return SessionLocal()
+
+def init_mssql(app=None):
     Base.metadata.create_all(bind=engine)
+    return engine
+
+@event.listens_for(engine, "connect")
+def _on_connect(dbapi_connection, connection_record):
+    try:
+        cur = dbapi_connection.cursor()
+        cur.execute("SET DATEFIRST 1;")
+        cur.close()
+    except Exception:
+        pass

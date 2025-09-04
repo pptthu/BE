@@ -1,21 +1,13 @@
 #!/usr/bin/env bash
+# Demo script (không dùng trong MSSQL)
 set -e
+CONTAINER=pg-local
+PORT=5432
+PASS=postgres
+DB=appdb
 
-# Chạy Postgres local bằng Docker
-# DB: booksysdb | user: postgres | pass: postgres
-container_name="podbook-pg"
-
-if [ "$(docker ps -aq -f name=$container_name)" ]; then
-  echo "Container $container_name đã tồn tại. Khởi động lại..."
-  docker start $container_name || true
-else
-  echo "Tạo container $container_name ..."
-  docker run --name $container_name \
-    -e POSTGRES_PASSWORD=postgres \
-    -e POSTGRES_DB=booksysdb \
-    -p 5432:5432 \
-    -d postgres:15
+if [ "$(docker ps -aq -f name=$CONTAINER)" ]; then
+  docker rm -f $CONTAINER >/dev/null 2>&1 || true
 fi
-
-echo "Postgres started at localhost:5432 (db=booksysdb, user=postgres, pass=postgres)"
-echo "Đặt DB_DIALECT=postgres trong .env để dùng Postgres."
+docker run -d --name $CONTAINER -e POSTGRES_PASSWORD=$PASS -e POSTGRES_DB=$DB -p $PORT:5432 postgres:16
+echo "Postgres is up on port $PORT (db=$DB, user=postgres, pass=$PASS)"
