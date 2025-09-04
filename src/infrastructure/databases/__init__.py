@@ -1,2 +1,1 @@
-﻿from .extensions import db, jwt
-__all__ = ["db", "jwt"]
+from .mssql import init_mssql as init_db

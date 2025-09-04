@@ -1,7 +1,12 @@
+<<<<<<< HEAD
+from src.infrastructure.models.user import UserModel
+from src.infrastructure.databases.mssql import session
+=======
 from werkzeug.security import check_password_hash, generate_password_hash
 from app import db
 from infrastructure.models.user_model import User
 
+>>>>>>> origin/main
 
 class AdminService:
 

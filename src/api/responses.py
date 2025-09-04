@@ -1,9 +1,3 @@
 from flask import jsonify
-
-def ok(data=None, **kwargs):
-    body = {"data": data}
-    body.update(kwargs)
-    return jsonify(body)
-
-def err(message: str, code: str = "error", status: int = 400):
-    return jsonify({"error": code, "message": message}), status
+def ok(data=None, status=200): return jsonify({"ok": True, "data": data}), status
+def fail(message="Bad Request", status=400): return jsonify({"ok": False, "error": message}), status
