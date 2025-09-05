@@ -1,11 +1,10 @@
+# src/api/controllers/customer_controller.py
 from flask import Blueprint, request, jsonify
 from marshmallow import Schema, fields, ValidationError
-from datetime import datetime
-from services.booking_service import BookingService
-from infrastructure.repositories.booking_repository import BookingRepository
+from services.booking_staffcus_service import BookingService
+from infrastructure.repositories.booking_staff_repository import BookingRepository
 from infrastructure.repositories.pod_cus_repository import PodRepository
 from infrastructure.repositories.user_cus_repository import UserRepository
-
 
 bp = Blueprint("customer", __name__, url_prefix="/customer")
 
@@ -23,6 +22,7 @@ class BookingRespSchema(Schema):
     start_time = fields.DateTime()
     end_time = fields.DateTime()
     created_at = fields.DateTime()
+    total_price = fields.Float(allow_none=True)
 
 create_schema = BookingCreateSchema()
 resp_schema = BookingRespSchema()
@@ -54,9 +54,9 @@ def list_pods():
         200:
           description: OK
     """
-    page = int(request.args.get("page", 1))
-    limit = int(request.args.get("limit", 10))
-    location_id = request.args.get("location_id")
+    page = request.args.get("page", default=1, type=int)
+    limit = request.args.get("limit", default=10, type=int)
+    location_id = request.args.get("location_id", type=int)
     pods, total = booking_service.list_pods(page, limit, location_id)
     return jsonify({"items": pods, "total": total, "page": page, "limit": limit}), 200
 
@@ -87,15 +87,22 @@ def create_booking():
     except ValidationError as e:
         return jsonify({"errors": e.messages}), 400
 
-    # giả sử đã có user_id từ JWT; demo hard-code  => thay bằng get_jwt() nếu anh đã cấu hình
-    user_id = request.headers.get("X-Demo-UserId", 1)
+    # demo: dùng header giả lập; sau này thay bằng get_jwt_identity()
+    user_id = int(request.headers.get("X-Demo-UserId", 1))
 
-    bk = booking_service.create_booking_for_customer(
-        user_id=user_id,
-        pod_id=payload["pod_id"],
-        start_time=payload["start_time"],
-        end_time=payload["end_time"],
-    )
+    try:
+        bk = booking_service.create_booking_for_customer(
+            user_id=user_id,
+            pod_id=payload["pod_id"],
+            start_time=payload["start_time"],
+            end_time=payload["end_time"],
+        )
+    except ValueError as e:
+        msg = str(e)
+        if msg == "Time slot conflicts":
+            return jsonify({"error": msg}), 409
+        return jsonify({"error": msg}), 400
+
     return jsonify(resp_schema.dump(bk)), 201
 
 @bp.get("/profile")
@@ -142,8 +149,8 @@ def customer_history():
     status = request.args.get("status")
     dt_from = request.args.get("from")
     dt_to = request.args.get("to")
-    page = int(request.args.get("page", 1))
-    limit = int(request.args.get("limit", 10))
+    page = request.args.get("page", default=1, type=int)
+    limit = request.args.get("limit", default=10, type=int)
 
     items, total = booking_service.list_customer_bookings(
         user_id=user_id, status=status, dt_from=dt_from, dt_to=dt_to, page=page, limit=limit
