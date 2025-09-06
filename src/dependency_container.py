@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # dependency_container.py  (đặt ở PROJECT ROOT, cùng cấp với thư mục src)
 from __future__ import annotations
 
@@ -134,9 +133,3 @@ def session_scope():
             db.close()
         except Exception:
             pass
-=======
-class Container:
-    pass
-
-container = Container()
->>>>>>> origin/main
