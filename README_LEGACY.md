@@ -1,0 +1,1 @@
+This build works with your existing data (no 'paid' column). Payment confirmation sets status only.
